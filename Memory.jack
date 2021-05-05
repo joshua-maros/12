@@ -1,0 +1,78 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/12/Memory.jack
+
+/**
+ * This library provides two services: direct access to the computer's main
+ * memory (RAM), and allocation and recycling of memory blocks. The Hack RAM
+ * consists of 32,768 words, each holding a 16-bit binary number.
+ */ 
+class Memory {
+    static Array memoryPointer, nextFreeSegmentPointer;
+
+    /** Initializes the class. */
+    function void init() {
+        let memoryPointer = 0;
+        let nextFreeSegmentPointer = 4002;
+        // Size of segment.
+        let nextFreeSegmentPointer[-2] = 4000;
+        // Pointer of next segment.
+        let nextFreeSegmentPointer[-1] = 0;
+        return;
+    }
+
+    /** Returns the RAM value at the given address. */
+    function int peek(int address) {
+        return memoryPointer[address];
+    }
+
+    /** Sets the RAM value at the given address to the given value. */
+    function void poke(int address, int value) {
+        let memoryPointer[address] = value;
+        return;
+    }
+
+    /** Finds an available RAM block of the given size and returns
+     *  a reference to its base address. */
+    function int alloc(int size) {
+        var Array result, splitSegmentPointer;
+        // Error if we are out of memory.
+        if (nextFreeSegmentPointer = 0) {
+            do Sys.error(0);
+        }
+        if (nextFreeSegmentPointer[-2] < size) {
+            do Sys.error(1);
+        }
+        // Get the start address of the next heap segment.
+        let result = nextFreeSegmentPointer;
+        // If it is bigger than needed, 
+        // allocate a new segment with the remaining space.
+        if (result[-2] > size) {
+            // +2 to skip past header stuff.
+            let splitSegmentPointer = result + size + 2;
+            // Size is whatever the extra space in the result segment is.
+            let splitSegmentPointer[-2] = result[-2] - size;
+            // Insert the new segment between the current segment
+            // and the segment that follows it.
+            let splitSegmentPointer[-1] = result[-1];
+            let result[-1] = splitSegmentPointer;
+            let result[-2] = size;
+            let nextFreeSegmentPointer = splitSegmentPointer;
+        } else {
+            let nextFreeSegmentPointer = result[-1];
+        }
+        return result;
+    }
+
+    /** De-allocates the given object (cast as an array) by making
+     *  it available for future allocations. */
+    function void deAlloc(Array o) {
+        // Prepend O to a linked list by making its 'next' point to our
+        // current free segment pointer.
+        let o[-1] = nextFreeSegmentPointer;
+        // Then store o as our new current free segment pointer.
+        let nextFreeSegmentPointer = o;
+        return;
+    }    
+}
